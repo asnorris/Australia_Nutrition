@@ -1,5 +1,5 @@
 ---
-title: "nutrition"
+title: "Nutrition"
 author: "Alexandra Norris"
 date: "7/17/2020"
 output: html_document
@@ -7,7 +7,121 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(haven)
 ```
+
+```{r}
+
+# read in data from Life in Australia Wave 4
+
+data <- read_dta("aus.dta")
+
+# select the data relevant to the nutrition experiment.  Filter for only online
+# respondents (Mode ==1)
+
+clean <- data %>%
+  select(Mode, DUM1, DUM2a, DUM2b, DUM3a, DUM3b, D1, D2, D3, D4a, D4b, D4c, D4d, D4e, D4f, D4g) %>%
+  filter(Mode == 1)
+
+```
+
+```{r Descriptive Statistics}
+
+```
+
+```{r}
+# Assessment of views about nudge approach versus traditional approach
+
+# total responses to D1
+
+a <- clean %>%
+  select(D1) %>%
+  count() 
+
+# Number of respondents that support nudging (D1 = 1)
+
+b <- clean %>%
+  select(D1) %>%
+  count(D1 == 1) %>%
+  slice(2) %>%
+  select(n)
+
+# Number of respondents that so not support nudging (D1 = 2)
+
+c <- clean %>%
+  select(D1) %>%
+  count(D1 == 2) %>%
+  slice(2) %>%
+  select(n)
+
+# Number of respondents that didn't know or refused (D1 = -98 or -99)
+
+d <- clean %>%
+  select(D1) %>%
+  filter(D1 %in% c(-98, -99)) %>%
+  count()
+
+```
+```{r}
+# Reasons people oppose government action
+
+# remove the NA values
+e <- clean %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 1) 
+
+f <- clean %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 2) 
+
+g <- clean %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 3) 
+
+h <- clean %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 4) 
+
+i <- clean %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 5) 
+
+  
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -9,6 +9,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(haven)
+library(rstanarm)
+library(sjPlot)
 ```
 
 ```{r}
@@ -18,11 +20,14 @@ library(haven)
 data <- read_dta("aus.dta")
 
 # select the data relevant to the nutrition experiment.  Filter for only online
-# respondents (Mode ==1)
+# respondents (Mode ==1). I also create a treatment variable using the DUM1
+# variable with 0 indicating the basic message and 1 indicating the nudge
+# explanation
 
 clean <- data %>%
   select(Mode, DUM1, DUM2a, DUM2b, DUM3a, DUM3b, D1, D2, D3, D4a, D4b, D4c, D4d, D4e, D4f, D4g) %>%
-  filter(Mode == 1)
+  mutate(treat = ifelse(is.na(DUM1), 0, 1))
+ 
 
 ```
 
@@ -64,37 +69,302 @@ d <- clean %>%
 
 ```
 ```{r}
-# Reasons people oppose government action
+# online responses
+# total responses to D1
+
+clean %>%
+  filter(Mode == 1) %>%
+  select(D1) %>%
+  count() 
+
+# Number of respondents that support nudging (D1 = 1)
+
+clean %>%
+  filter(Mode == 1) %>%
+  select(D1) %>%
+  count(D1 == 1) %>%
+  slice(2) %>%
+  select(n)
+
+# Number of respondents that so not support nudging (D1 = 2)
+
+clean %>%
+  filter(Mode == 1) %>%
+  select(D1) %>%
+  count(D1 == 2) %>%
+  slice(2) %>%
+  select(n)
+
+# Number of respondents that didn't know or refused (D1 = -98 or -99)
+
+clean %>%
+  filter(Mode == 1) %>%
+  select(D1) %>%
+  filter(D1 %in% c(-98, -99)) %>%
+  count()
+```
+```{r}
+# Phone responses
+
+# total responses to D1
+
+clean %>%
+  filter(Mode == 2) %>%
+  select(D1) %>%
+  count() 
+
+# Number of respondents that support nudging (D1 = 1)
+
+clean %>%
+  filter(Mode == 2) %>%
+  select(D1) %>%
+  count(D1 == 1) %>%
+  slice(2) %>%
+  select(n)
+
+# Number of respondents that so not support nudging (D1 = 2)
+
+clean %>%
+  filter(Mode == 2) %>%
+  select(D1) %>%
+  count(D1 == 2) %>%
+  slice(2) %>%
+  select(n)
+
+# Number of respondents that didn't know or refused (D1 = -98 or -99)
+
+clean %>%
+  filter(Mode == 2) %>%
+  select(D1) %>%
+  filter(D1 %in% c(-98, -99)) %>%
+  count()
+
+```
+
+```{r D2}
+# Reasons people oppose government action - TOTAL
 
 # remove the NA values
-e <- clean %>%
+clean %>%
   select(D2) %>%
   na.omit() %>%
   count(D2 == 1) 
 
-f <- clean %>%
+clean %>%
   select(D2) %>%
   na.omit() %>%
   count(D2 == 2) 
 
-g <- clean %>%
+clean %>%
   select(D2) %>%
   na.omit() %>%
   count(D2 == 3) 
 
-h <- clean %>%
+clean %>%
   select(D2) %>%
   na.omit() %>%
   count(D2 == 4) 
 
-i <- clean %>%
+clean %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 5) 
+
+# ONLINE ONLY
+
+# Reasons people oppose government action
+
+# remove the NA values
+clean %>%
+  filter(Mode == 1) %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 1) 
+
+clean %>%
+  filter(Mode == 1) %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 2) 
+
+clean %>%
+  filter(Mode == 1) %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 3) 
+
+clean %>%
+  filter(Mode == 1) %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 4) 
+
+clean %>%
+  filter(Mode == 1) %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 5) 
+
+# PHONE ONLY
+
+clean %>%
+  filter(Mode == 2) %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 1) 
+
+clean %>%
+  filter(Mode == 2) %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 2) 
+
+clean %>%
+  filter(Mode == 2) %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 3) 
+
+clean %>%
+  filter(Mode == 2) %>%
+  select(D2) %>%
+  na.omit() %>%
+  count(D2 == 4) 
+
+clean %>%
+  filter(Mode == 2) %>%
   select(D2) %>%
   na.omit() %>%
   count(D2 == 5) 
 
   
 ```
+```{r D3}
+# Ban versus nudge
 
+# All responses
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  count()
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  count(D3 == 1)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  count(D3 == 2)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  count(D3 == 3)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  count(D3 == 4)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  count(D3 == 5)
+
+# TREAT = 0, non-transparency message
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 0) %>%
+  count()
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 0) %>%
+  count(D3 == 1)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 0) %>%
+  count(D3 == 2)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 0) %>%
+  count(D3 == 3)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 0) %>%
+  count(D3 == 4)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 0) %>%
+  count(D3 == 5)
+
+# Transparency message, treat = 1
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 1) %>%
+  count()
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 1) %>%
+  count(D3 == 1)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 1) %>%
+  count(D3 == 2)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 1) %>%
+  count(D3 == 3)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 1) %>%
+  count(D3 == 4)
+
+clean %>%
+  select(treat, D3) %>%
+  na.omit() %>%
+  filter(treat == 1) %>%
+  count(D3 == 5)
+
+```
+
+```{r}
+# regression analysis of D3
+
+# filter out -98 and -99 because they will throw off the regression.  I also
+# adjust the mode so the intercept represents an actual situation
+
+new <- clean %>%
+  filter(D3 != -99 | D3 != -98) %>%
+  mutate(Mode_adj = Mode - 1)
+
+fit <- stan_glm(D3 ~ treat + Mode_adj, data = new)
+print(fit)
+
+tab_model(fit, show.se = FALSE, show.ci = 0.95, show.r2 = TRUE, show.p = TRUE, bpe = "median", collapse.se = FALSE, title = "Support for Menu Change Over Ban", dv.labels = "Support for Menu Change: 1-5 with 5 signaling strong support", pred.labels = c("(Intercept)","Transparency Message", "Mode of Survey"))
+```
 
 
 

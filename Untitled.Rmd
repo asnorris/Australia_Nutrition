@@ -11,6 +11,10 @@ library(tidyverse)
 library(haven)
 library(rstanarm)
 library(sjPlot)
+library(BalanceCheck)
+library(cobalt)
+library(arsenal)
+library(gt)
 ```
 
 ```{r}
@@ -27,11 +31,47 @@ data <- read_dta("aus.dta")
 clean <- data %>%
   select(Mode, DUM1, DUM2a, DUM2b, DUM3a, DUM3b, D1, D2, D3, D4a, D4b, D4c, D4d, D4e, D4f, D4g) %>%
   mutate(treat = ifelse(is.na(DUM1), 0, 1))
+
+# for balance we need the other variables
+
+bal <- data %>%
+  mutate(treat = ifelse(is.na(DUM1), 0, 1)) %>%
+  select(treat, p_state, p_region, p_geography, p_seifa, p_gender, p_age_group, d_cob_group,  p_citizen, p_lote, p_atsi, p_household_str, d_education, weight)
+
+try <- data %>%
+  mutate(treat = ifelse(is.na(DUM1), "Control", "Transparency Message")) %>%
+  select(treat, p_state, p_region, p_geography, p_seifa, p_gender, p_age_group, d_cob_group,  p_citizen, p_lote, p_atsi, p_household_str, d_education, weight)
  
+
+mycontrols  <- tableby.control(test=FALSE, total=FALSE,
+                               numeric.test="kwt", cat.test="chisq",
+                               numeric.stats=c("N", "median", "q1q3"),
+                               cat.stats=c("countpct"),
+                               stats.labels=list(N='Count', median='Median', q1q3='Q1,Q3'))
+
+table_1 <- tableby(treat ~ ., data = try)
+
+balance_fit <- glm(treat ~ ., data = bal)
+
+print(balance_fit)
+
+
+
+summary(table_1, title = "Balance Check for DUM1")
+
+
+
+
 
 ```
 
 ```{r Descriptive Statistics}
+# Generating ATT weights as specified in Austin (2011)
+bal$p.score <- glm(f.build("treat", bal), data = bal, 
+                       family = "binomial")$fitted.values
+bal$att.weights <- with(bal, treat + (1-treat)*p.score/(1-p.score))
+
+bal.tab(treat ~ p_state + p_region + p_geography + p_seifa + p_gender + p_age_group + d_cob_group + p_citizen + p_lote + p_atsi + p_household_str + d_education + weight, data = bal, weights = "att.weights", distance = "p.score")
 
 ```
 
@@ -351,19 +391,56 @@ clean %>%
 ```
 
 ```{r}
-# regression analysis of D3
+# regression analysis of D3 FULL SAMPLE
 
 # filter out -98 and -99 because they will throw off the regression.  I also
 # adjust the mode so the intercept represents an actual situation
 
 new <- clean %>%
-  filter(D3 != -99 | D3 != -98) %>%
-  mutate(Mode_adj = Mode - 1)
+  filter(D3 %in% c(1,2,3,4,5)) %>%
+  mutate(Mode_adj = Mode - 1) 
 
-fit <- stan_glm(D3 ~ treat + Mode_adj, data = new)
-print(fit)
+fit_1 <- lm(D3 ~ treat + Mode_adj, data = new)
+print(fit_1)
 
-tab_model(fit, show.se = FALSE, show.ci = 0.95, show.r2 = TRUE, show.p = TRUE, bpe = "median", collapse.se = FALSE, title = "Support for Menu Change Over Ban", dv.labels = "Support for Menu Change: 1-5 with 5 signaling strong support", pred.labels = c("(Intercept)","Transparency Message", "Mode of Survey"))
+
+# create table with regression output
+
+tab_model(fit_1, show.se = FALSE, show.ci = 0.95, show.r2 = TRUE, show.p = TRUE, bpe = "median", collapse.se = FALSE, title = "Full Sample: Support for Menu Change Over Ban", dv.labels = "Support for Nudging over a Ban (Higher number indicates more support for nudge)", pred.labels = c("(Intercept)","Transparency Message", "Mode of Survey"))
+```
+
+```{r}
+# Regression analysis of D3 PHONE ONLY
+
+phone <- clean %>%
+  filter(D3 %in% c(1,2,3,4,5)) %>%
+  mutate(Mode_adj = Mode - 1)  %>%
+  filter(Mode_adj == 1)
+
+fit_2 <- lm(D3 ~ treat, data = phone)
+print(fit_2)
+
+
+# create table with regression output
+
+tab_model(fit_2, show.se = FALSE, show.ci = 0.95, show.r2 = TRUE, show.p = TRUE, bpe = "median", collapse.se = FALSE, title = "Phone Only: Support for Menu Change Over Ban", dv.labels = "Support for Nudging over a Ban (Higher number indicates more support for nudge)", pred.labels = c("(Intercept)","Transparency Message"))
+
+```
+```{r}
+# Regression analysis of D3 ONLINE ONLY
+
+online <- clean %>%
+  filter(D3 %in% c(1,2,3,4,5)) %>%
+  mutate(Mode_adj = Mode - 1)  %>%
+  filter(Mode_adj == 0)
+
+fit_3 <- lm(D3 ~ treat, data = online)
+print(fit_3)
+
+
+# create table with regression output
+
+tab_model(fit_3, show.se = FALSE, show.ci = 0.95, show.r2 = TRUE, show.p = TRUE, bpe = "median", collapse.se = FALSE, title = "Online Only: Support for Menu Change Over Ban", dv.labels = "Support for Nudging over a Ban (Higher number indicates more support for nudge)", pred.labels = c("(Intercept)","Transparency Message"))
 ```
 
 

@@ -380,7 +380,122 @@ data &lt;- read_dta(&quot;aus.dta&quot;)
 
 clean &lt;- data %&gt;%
   select(Mode, DUM1, DUM2a, DUM2b, DUM3a, DUM3b, D1, D2, D3, D4a, D4b, D4c, D4d, D4e, D4f, D4g) %&gt;%
-  mutate(treat = ifelse(is.na(DUM1), 0, 1))</code></pre>
+  mutate(treat = ifelse(is.na(DUM1), 0, 1))
+
+# for balance we need the other variables
+
+bal &lt;- data %&gt;%
+  mutate(treat = ifelse(is.na(DUM1), 0, 1)) %&gt;%
+  select(treat, p_state, p_region, p_geography, p_seifa, p_gender, p_age_group, d_cob_group,  p_citizen, p_lote, p_atsi, p_household_str, d_education, weight)
+
+try &lt;- data %&gt;%
+  mutate(treat = ifelse(is.na(DUM1), &quot;Control&quot;, &quot;Transparency Message&quot;)) %&gt;%
+  select(treat, p_state, p_region, p_geography, p_seifa, p_gender, p_age_group, d_cob_group,  p_citizen, p_lote, p_atsi, p_household_str, d_education, weight)
+ 
+
+mycontrols  &lt;- tableby.control(test=FALSE, total=FALSE,
+                               numeric.test=&quot;kwt&quot;, cat.test=&quot;chisq&quot;,
+                               numeric.stats=c(&quot;N&quot;, &quot;median&quot;, &quot;q1q3&quot;),
+                               cat.stats=c(&quot;countpct&quot;),
+                               stats.labels=list(N='Count', median='Median', q1q3='Q1,Q3'))
+
+table_1 &lt;- tableby(treat ~ ., data = try)
+
+balance_fit &lt;- glm(treat ~ ., data = bal)
+
+print(balance_fit)</code></pre>
+<pre><code>## 
+## Call:  glm(formula = treat ~ ., data = bal)
+## 
+## Coefficients:
+##     (Intercept)          p_state         p_region      p_geography  
+##       5.148e-01       -3.037e-03       -4.194e-03               NA  
+##         p_seifa         p_gender      p_age_group      d_cob_group  
+##      -3.398e-04        9.131e-04        6.439e-05       -1.271e-03  
+##       p_citizen           p_lote           p_atsi  p_household_str  
+##       6.209e-03        5.983e-03       -7.309e-04       -7.405e-04  
+##     d_education           weight  
+##       3.501e-04       -7.789e-03  
+## 
+## Degrees of Freedom: 3248 Total (i.e. Null);  3236 Residual
+## Null Deviance:       812.2 
+## Residual Deviance: 810.5     AIC: 4737</code></pre>
+<pre class="r"><code>summary(table_1, title = &quot;Balance Check for DUM1&quot;)</code></pre>
+<pre><code>## 
+## Table: Balance Check for DUM1
+## 
+## |                                                                 | Control (N=1609) | Transparency Message (N=1640) |  Total (N=3249)  | p value|
+## |:----------------------------------------------------------------|:----------------:|:-----------------------------:|:----------------:|-------:|
+## |**Can you please tell me which state or territory you live in?** |                  |                               |                  |   0.622|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  2.735 (1.694)   |         2.705 (1.677)         |  2.720 (1.685)   |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          |  1.000 - 8.000   |         1.000 - 8.000         |  1.000 - 8.000   |        |
+## |**Capital city / rest of state**                                 |                  |                               |                  |   0.385|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  1.334 (0.472)   |         1.279 (2.474)         |  1.306 (1.789)   |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          |  1.000 - 2.000   |        -97.000 - 2.000        | -97.000 - 2.000  |        |
+## |**Capital city / rest of state by state**                        |                  |                               |                  |   0.394|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  4.803 (3.333)   |         4.690 (4.159)         |  4.746 (3.773)   |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          |  1.000 - 15.000  |       -97.000 - 15.000        | -97.000 - 15.000 |        |
+## |**Socio-Economic Indexes for Areas**                             |                  |                               |                  |   0.579|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  3.108 (2.880)   |         3.043 (3.774)         |  3.075 (3.360)   |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          | -97.000 - 5.000  |        -97.000 - 5.000        | -97.000 - 5.000  |        |
+## |**What is your gender?**                                         |                  |                               |                  |   0.786|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  1.493 (2.557)   |         1.518 (2.533)         |  1.506 (2.545)   |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          | -99.000 - 3.000  |        -99.000 - 3.000        | -99.000 - 3.000  |        |
+## |**Age group as of 31st January 2020**                            |                  |                               |                  |   0.977|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  3.249 (10.500)  |        3.259 (10.403)         |  3.254 (10.449)  |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          | -97.000 - 7.000  |        -97.000 - 7.000        | -97.000 - 7.000  |        |
+## |**Respondent country of birth grouping - derived**               |                  |                               |                  |   0.760|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  1.218 (4.362)   |         1.168 (4.907)         |  1.193 (4.645)   |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          | -99.000 - 3.000  |        -97.000 - 3.000        | -99.000 - 3.000  |        |
+## |**Are you an Australian citizen?**                               |                  |                               |                  |   0.212|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  1.009 (2.508)   |         1.087 (0.281)         |  1.048 (1.776)   |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          | -99.000 - 2.000  |         1.000 - 2.000         | -99.000 - 2.000  |        |
+## |**Do you speak a language other than English at home?**          |                  |                               |                  |   0.162|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  1.725 (3.555)   |         1.849 (0.358)         |  1.788 (2.515)   |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          | -99.000 - 2.000  |         1.000 - 2.000         | -99.000 - 2.000  |        |
+## |**Are you of Aboriginal or Torres Strait Islander origin?**      |                  |                               |                  |   0.826|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  3.893 (2.591)   |         3.873 (2.578)         |  3.883 (2.584)   |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          | -99.000 - 4.000  |        -99.000 - 4.000        | -99.000 - 4.000  |        |
+## |**Which of the following best describes your household?**        |                  |                               |                  |   0.667|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  2.787 (8.001)   |         2.661 (8.648)         |  2.723 (8.333)   |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          | -99.000 - 10.000 |       -99.000 - 10.000        | -99.000 - 10.000 |        |
+## |**Highest educational qualification - derived**                  |                  |                               |                  |   0.504|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  0.115 (19.551)  |        0.560 (18.462)         |  0.340 (19.007)  |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          | -97.000 - 9.000  |        -97.000 - 9.000        | -97.000 - 9.000  |        |
+## |**Final GREG weight (adds to number of respondents)**            |                  |                               |                  |   0.543|
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Mean (SD)                                      |  1.009 (0.838)   |         0.991 (0.795)         |  1.000 (0.816)   |        |
+## |&amp;nbsp;&amp;nbsp;&amp;nbsp;Range                                          |  0.021 - 5.598   |         0.015 - 5.499         |  0.015 - 5.598   |        |</code></pre>
+<pre class="r"><code># Generating ATT weights as specified in Austin (2011)
+bal$p.score &lt;- glm(f.build(&quot;treat&quot;, bal), data = bal, 
+                       family = &quot;binomial&quot;)$fitted.values</code></pre>
+<pre><code>## Warning in model.matrix.default(mt, mf, contrasts): the response appeared on the
+## right-hand side and was dropped</code></pre>
+<pre><code>## Warning in model.matrix.default(mt, mf, contrasts): problem with term 1 in
+## model.matrix: no columns are assigned</code></pre>
+<pre class="r"><code>bal$att.weights &lt;- with(bal, treat + (1-treat)*p.score/(1-p.score))
+
+bal.tab(treat ~ p_state + p_region + p_geography + p_seifa + p_gender + p_age_group + d_cob_group + p_citizen + p_lote + p_atsi + p_household_str + d_education + weight, data = bal, weights = &quot;att.weights&quot;, distance = &quot;p.score&quot;)</code></pre>
+<pre><code>## Balance Measures
+##                     Type Diff.Adj
+## p.score         Distance   0.0083
+## p_state          Contin.  -0.0031
+## p_region         Contin.  -0.0212
+## p_geography      Contin.  -0.0151
+## p_seifa          Contin.  -0.0136
+## p_gender         Contin.   0.0009
+## p_age_group      Contin.  -0.0019
+## d_cob_group      Contin.  -0.0045
+## p_citizen        Contin.   0.0005
+## p_lote           Contin.  -0.0042
+## p_atsi           Contin.   0.0010
+## p_household_str  Contin.   0.0013
+## d_education      Contin.  -0.0012
+## weight           Contin.   0.0009
+## 
+## Effective sample sizes
+##             Control Treated
+## Unadjusted 1609.000    1640
+## Adjusted   1592.985    1640</code></pre>
 <pre class="r"><code># Assessment of views about nudge approach versus traditional approach
 
 # total responses to D1
@@ -835,146 +950,37 @@ clean %&gt;%
 ##   &lt;lgl&gt;     &lt;int&gt;
 ## 1 FALSE       984
 ## 2 TRUE        459</code></pre>
-<pre class="r"><code># regression analysis of D3
+<pre class="r"><code># regression analysis of D3 FULL SAMPLE
 
 # filter out -98 and -99 because they will throw off the regression.  I also
 # adjust the mode so the intercept represents an actual situation
 
 new &lt;- clean %&gt;%
-  filter(D3 != -99 | D3 != -98) %&gt;%
-  mutate(Mode_adj = Mode - 1)
+  filter(D3 %in% c(1,2,3,4,5)) %&gt;%
+  mutate(Mode_adj = Mode - 1) 
 
-fit &lt;- stan_glm(D3 ~ treat + Mode_adj, data = new)</code></pre>
+fit_1 &lt;- lm(D3 ~ treat + Mode_adj, data = new)
+print(fit_1)</code></pre>
 <pre><code>## 
-## SAMPLING FOR MODEL 'continuous' NOW (CHAIN 1).
-## Chain 1: 
-## Chain 1: Gradient evaluation took 7.1e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.71 seconds.
-## Chain 1: Adjust your expectations accordingly!
-## Chain 1: 
-## Chain 1: 
-## Chain 1: Iteration:    1 / 2000 [  0%]  (Warmup)
-## Chain 1: Iteration:  200 / 2000 [ 10%]  (Warmup)
-## Chain 1: Iteration:  400 / 2000 [ 20%]  (Warmup)
-## Chain 1: Iteration:  600 / 2000 [ 30%]  (Warmup)
-## Chain 1: Iteration:  800 / 2000 [ 40%]  (Warmup)
-## Chain 1: Iteration: 1000 / 2000 [ 50%]  (Warmup)
-## Chain 1: Iteration: 1001 / 2000 [ 50%]  (Sampling)
-## Chain 1: Iteration: 1200 / 2000 [ 60%]  (Sampling)
-## Chain 1: Iteration: 1400 / 2000 [ 70%]  (Sampling)
-## Chain 1: Iteration: 1600 / 2000 [ 80%]  (Sampling)
-## Chain 1: Iteration: 1800 / 2000 [ 90%]  (Sampling)
-## Chain 1: Iteration: 2000 / 2000 [100%]  (Sampling)
-## Chain 1: 
-## Chain 1:  Elapsed Time: 0.047195 seconds (Warm-up)
-## Chain 1:                0.221206 seconds (Sampling)
-## Chain 1:                0.268401 seconds (Total)
-## Chain 1: 
+## Call:
+## lm(formula = D3 ~ treat + Mode_adj, data = new)
 ## 
-## SAMPLING FOR MODEL 'continuous' NOW (CHAIN 2).
-## Chain 2: 
-## Chain 2: Gradient evaluation took 1.1e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.11 seconds.
-## Chain 2: Adjust your expectations accordingly!
-## Chain 2: 
-## Chain 2: 
-## Chain 2: Iteration:    1 / 2000 [  0%]  (Warmup)
-## Chain 2: Iteration:  200 / 2000 [ 10%]  (Warmup)
-## Chain 2: Iteration:  400 / 2000 [ 20%]  (Warmup)
-## Chain 2: Iteration:  600 / 2000 [ 30%]  (Warmup)
-## Chain 2: Iteration:  800 / 2000 [ 40%]  (Warmup)
-## Chain 2: Iteration: 1000 / 2000 [ 50%]  (Warmup)
-## Chain 2: Iteration: 1001 / 2000 [ 50%]  (Sampling)
-## Chain 2: Iteration: 1200 / 2000 [ 60%]  (Sampling)
-## Chain 2: Iteration: 1400 / 2000 [ 70%]  (Sampling)
-## Chain 2: Iteration: 1600 / 2000 [ 80%]  (Sampling)
-## Chain 2: Iteration: 1800 / 2000 [ 90%]  (Sampling)
-## Chain 2: Iteration: 2000 / 2000 [100%]  (Sampling)
-## Chain 2: 
-## Chain 2:  Elapsed Time: 0.04363 seconds (Warm-up)
-## Chain 2:                0.221094 seconds (Sampling)
-## Chain 2:                0.264724 seconds (Total)
-## Chain 2: 
-## 
-## SAMPLING FOR MODEL 'continuous' NOW (CHAIN 3).
-## Chain 3: 
-## Chain 3: Gradient evaluation took 1e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.1 seconds.
-## Chain 3: Adjust your expectations accordingly!
-## Chain 3: 
-## Chain 3: 
-## Chain 3: Iteration:    1 / 2000 [  0%]  (Warmup)
-## Chain 3: Iteration:  200 / 2000 [ 10%]  (Warmup)
-## Chain 3: Iteration:  400 / 2000 [ 20%]  (Warmup)
-## Chain 3: Iteration:  600 / 2000 [ 30%]  (Warmup)
-## Chain 3: Iteration:  800 / 2000 [ 40%]  (Warmup)
-## Chain 3: Iteration: 1000 / 2000 [ 50%]  (Warmup)
-## Chain 3: Iteration: 1001 / 2000 [ 50%]  (Sampling)
-## Chain 3: Iteration: 1200 / 2000 [ 60%]  (Sampling)
-## Chain 3: Iteration: 1400 / 2000 [ 70%]  (Sampling)
-## Chain 3: Iteration: 1600 / 2000 [ 80%]  (Sampling)
-## Chain 3: Iteration: 1800 / 2000 [ 90%]  (Sampling)
-## Chain 3: Iteration: 2000 / 2000 [100%]  (Sampling)
-## Chain 3: 
-## Chain 3:  Elapsed Time: 0.054404 seconds (Warm-up)
-## Chain 3:                0.229966 seconds (Sampling)
-## Chain 3:                0.28437 seconds (Total)
-## Chain 3: 
-## 
-## SAMPLING FOR MODEL 'continuous' NOW (CHAIN 4).
-## Chain 4: 
-## Chain 4: Gradient evaluation took 1e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.1 seconds.
-## Chain 4: Adjust your expectations accordingly!
-## Chain 4: 
-## Chain 4: 
-## Chain 4: Iteration:    1 / 2000 [  0%]  (Warmup)
-## Chain 4: Iteration:  200 / 2000 [ 10%]  (Warmup)
-## Chain 4: Iteration:  400 / 2000 [ 20%]  (Warmup)
-## Chain 4: Iteration:  600 / 2000 [ 30%]  (Warmup)
-## Chain 4: Iteration:  800 / 2000 [ 40%]  (Warmup)
-## Chain 4: Iteration: 1000 / 2000 [ 50%]  (Warmup)
-## Chain 4: Iteration: 1001 / 2000 [ 50%]  (Sampling)
-## Chain 4: Iteration: 1200 / 2000 [ 60%]  (Sampling)
-## Chain 4: Iteration: 1400 / 2000 [ 70%]  (Sampling)
-## Chain 4: Iteration: 1600 / 2000 [ 80%]  (Sampling)
-## Chain 4: Iteration: 1800 / 2000 [ 90%]  (Sampling)
-## Chain 4: Iteration: 2000 / 2000 [100%]  (Sampling)
-## Chain 4: 
-## Chain 4:  Elapsed Time: 0.046697 seconds (Warm-up)
-## Chain 4:                0.219486 seconds (Sampling)
-## Chain 4:                0.266183 seconds (Total)
-## Chain 4:</code></pre>
-<pre class="r"><code>print(fit)</code></pre>
-<pre><code>## stan_glm
-##  family:       gaussian [identity]
-##  formula:      D3 ~ treat + Mode_adj
-##  observations: 2828
-##  predictors:   3
-## ------
-##             Median MAD_SD
-## (Intercept)  2.9    0.2  
-## treat        0.1    0.2  
-## Mode_adj    -1.4    0.4  
-## 
-## Auxiliary parameter(s):
-##       Median MAD_SD
-## sigma 5.9    0.1   
-## 
-## ------
-## * For help interpreting the printed output see ?print.stanreg
-## * For info on the priors used see ?prior_summary.stanreg</code></pre>
-<pre class="r"><code>tab_model(fit, show.se = FALSE, show.ci = 0.95, show.r2 = TRUE, show.p = TRUE, bpe = &quot;median&quot;, collapse.se = FALSE, title = &quot;Support for Menu Change Over Ban&quot;, dv.labels = &quot;Support for Menu Change: 1-5 with 5 signaling strong support&quot;, pred.labels = c(&quot;(Intercept)&quot;,&quot;Transparency Message&quot;, &quot;Mode of Survey&quot;))</code></pre>
+## Coefficients:
+## (Intercept)        treat     Mode_adj  
+##     3.16046     -0.02864     -0.01665</code></pre>
+<pre class="r"><code># create table with regression output
+
+tab_model(fit_1, show.se = FALSE, show.ci = 0.95, show.r2 = TRUE, show.p = TRUE, bpe = &quot;median&quot;, collapse.se = FALSE, title = &quot;Full Sample: Support for Menu Change Over Ban&quot;, dv.labels = &quot;Support for Nudging over a Ban (Higher number indicates more support for nudge)&quot;, pred.labels = c(&quot;(Intercept)&quot;,&quot;Transparency Message&quot;, &quot;Mode of Survey&quot;))</code></pre>
 <table style="border-collapse:collapse; border:none;">
 <caption style="font-weight: bold; text-align:left;">
-Support for Menu Change Over Ban
+Full Sample: Support for Menu Change Over Ban
 </caption>
 <tr>
 <th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">
  
 </th>
-<th colspan="2" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
-Support for Menu Change: 1-5 with 5 signaling strong support
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
+Support for Nudging over a Ban (Higher number indicates more support for nudge)
 </th>
 </tr>
 <tr>
@@ -985,7 +991,10 @@ Predictors
 Estimates
 </td>
 <td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
-CI (95%)
+CI
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+p
 </td>
 </tr>
 <tr>
@@ -993,10 +1002,13 @@ CI (95%)
 (Intercept)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-2.89
+3.16
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-2.57 – 3.21
+3.07 – 3.25
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001
 </td>
 </tr>
 <tr>
@@ -1004,10 +1016,13 @@ CI (95%)
 Transparency Message
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.06
+-0.03
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--0.37 – 0.50
+-0.15 – 0.09
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.639
 </td>
 </tr>
 <tr>
@@ -1015,26 +1030,209 @@ Transparency Message
 Mode of Survey
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--1.38
+-0.02
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--2.29 – -0.49
+-0.26 – 0.22
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.892
 </td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">
 Observations
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-2828
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">
+2819
 </td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">
-R<sup>2</sup> Bayes
+R<sup>2</sup> / R<sup>2</sup> adjusted
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.004
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">
+0.000 / -0.001
+</td>
+</tr>
+</table>
+<pre class="r"><code># Regression analysis of D3 PHONE ONLY
+
+phone &lt;- clean %&gt;%
+  filter(D3 %in% c(1,2,3,4,5)) %&gt;%
+  mutate(Mode_adj = Mode - 1)  %&gt;%
+  filter(Mode_adj == 1)
+
+fit_2 &lt;- lm(D3 ~ treat, data = phone)
+print(fit_2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = D3 ~ treat, data = phone)
+## 
+## Coefficients:
+## (Intercept)        treat  
+##     3.09302      0.06539</code></pre>
+<pre class="r"><code># create table with regression output
+
+tab_model(fit_2, show.se = FALSE, show.ci = 0.95, show.r2 = TRUE, show.p = TRUE, bpe = &quot;median&quot;, collapse.se = FALSE, title = &quot;Phone Only: Support for Menu Change Over Ban&quot;, dv.labels = &quot;Support for Nudging over a Ban (Higher number indicates more support for nudge)&quot;, pred.labels = c(&quot;(Intercept)&quot;,&quot;Transparency Message&quot;))</code></pre>
+<table style="border-collapse:collapse; border:none;">
+<caption style="font-weight: bold; text-align:left;">
+Phone Only: Support for Menu Change Over Ban
+</caption>
+<tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">
+ 
+</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
+Support for Nudging over a Ban (Higher number indicates more support for nudge)
+</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">
+Predictors
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+Estimates
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+CI
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+p
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+(Intercept)
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+3.09
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+2.72 – 3.47
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Transparency Message
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.07
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+-0.44 – 0.57
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.800
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">
+Observations
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">
+187
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">
+R<sup>2</sup> / R<sup>2</sup> adjusted
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">
+0.000 / -0.005
+</td>
+</tr>
+</table>
+<pre class="r"><code># Regression analysis of D3 ONLINE ONLY
+
+online &lt;- clean %&gt;%
+  filter(D3 %in% c(1,2,3,4,5)) %&gt;%
+  mutate(Mode_adj = Mode - 1)  %&gt;%
+  filter(Mode_adj == 0)
+
+fit_3 &lt;- lm(D3 ~ treat, data = online)
+print(fit_3)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = D3 ~ treat, data = online)
+## 
+## Coefficients:
+## (Intercept)        treat  
+##     3.16383     -0.03528</code></pre>
+<pre class="r"><code># create table with regression output
+
+tab_model(fit_3, show.se = FALSE, show.ci = 0.95, show.r2 = TRUE, show.p = TRUE, bpe = &quot;median&quot;, collapse.se = FALSE, title = &quot;Online Only: Support for Menu Change Over Ban&quot;, dv.labels = &quot;Support for Nudging over a Ban (Higher number indicates more support for nudge)&quot;, pred.labels = c(&quot;(Intercept)&quot;,&quot;Transparency Message&quot;))</code></pre>
+<table style="border-collapse:collapse; border:none;">
+<caption style="font-weight: bold; text-align:left;">
+Online Only: Support for Menu Change Over Ban
+</caption>
+<tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">
+ 
+</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
+Support for Nudging over a Ban (Higher number indicates more support for nudge)
+</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">
+Predictors
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+Estimates
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+CI
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+p
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+(Intercept)
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+3.16
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+3.08 – 3.25
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Transparency Message
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+-0.04
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+-0.16 – 0.09
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.575
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">
+Observations
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">
+2632
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">
+R<sup>2</sup> / R<sup>2</sup> adjusted
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">
+0.000 / -0.000
 </td>
 </tr>
 </table>
